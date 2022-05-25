@@ -48,7 +48,7 @@ public class ReversiLogic {
     public Cell[][] field; // Реализация игрового поля
 
     // Переменные требуемые, для реализации искусственного интеллекта
-    public static int AILevel = 4; // Глубина работы искусственного интеллекта
+    private static final int AILevel = 5; // Глубина работы искусственного интеллекта
     private static int minMaxX, minMaxY; // Координаты наиболее оптимального шага компьютера, полученные при минимаксе
 
     public ReversiLogic() {
@@ -139,7 +139,7 @@ public class ReversiLogic {
         if (computerStep == 0) computerStep = -1;
         else {
             runMinMax(0, 'O', 0);
-            System.out.print("\nFINAL    " + minMaxX + " " + minMaxY + "\n");
+            System.out.print("\n                FINAL    " + minMaxX + " " + minMaxY + "\n");
             move(minMaxX, minMaxY, true, 'O', 'X', numberOfMoves);
         }
     }
@@ -152,10 +152,12 @@ public class ReversiLogic {
         // Возвращает оценку текущей ветви ходов, если глубина алгоритма достигает уровня искусственного интеллекта
         if (depth == AILevel) return score;
         // Возвращает оценку текущей ветви ходов в случае выигрыша (поле заполнено бочонками)
-        if (checkOccupancy() == 1 && turn == 'O') {
-            return -1000;
-        } else if (checkOccupancy() == 1 && turn == 'X') {
-            return 1000;
+        if (checkOccupancy() == 1) {
+            if (turn == 'O') {
+                return -100000;
+            } else if (turn == 'X') {
+                return 100000;
+            }
         }
 
         int beta = Integer.MAX_VALUE; // Более благоприятная оценка для минимизирующего игрока
@@ -167,126 +169,126 @@ public class ReversiLogic {
 
         // Обработка всех возможных щагов
         for (int i = 0; i < moves.size() / 2; i += 2) {
+            int localScore = score;
             // Получение координат из массива
             int cellX = moves.get(i);
             int cellY = moves.get(i + 1);
-            System.out.print("\nCoordinate: " + cellX + "  " + cellY + "     ");
+            x = field[cellX][cellY].getX();
+            y = field[cellX][cellY].getY();
+            if (depth == 0) System.out.print("\nCoordinate: " + cellX + "  " + cellY + "     ");
 
             // На шаге 'O' происходит максимизация оценки возможного шага
             if (turn == 'O') {
                 // Моделируется шаг компьютера
                 move(cellX, cellY, false, 'O', 'X', numberOfMoves);
-                x = field[cellX][cellY].getX();
-                y = field[cellX][cellY].getY();
                 field[cellX][cellY].setPosition(x, y, 'O');
 
                 // Оценка шага весами разных зон игрового поля относительно хода компьютера
                 // Зоны обозначены в файле "images/fieldValues.png"
                 if ((cellX == 0  || cellX == 7) && (cellY == 0  || cellY == 7)) {
-                    score *= 5; // Зона №1
+                    localScore += 10; // Зона №1
                 }
                 if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
-                    score *= 3; // Зона №2
+                    localScore += 6; // Зона №2
                 }
                 if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
-                    score *= 3; // Зона №2
+                    localScore += 6; // Зона №2
+                }
+                if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
+                    localScore += 6; // Зона №3
                 }
                 if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
-                    score /= 3; // Зона №4
+                    localScore -= 12; // Зона №4
                 }
                 if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
-                    score /= 3; // Зона №4
+                    localScore -= 12; // Зона №4
                 }
                 if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
-                    score /= 5; // Зона №5
+                    localScore -= 20; // Зона №5
                 }
                 if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
-                    score /= 5; // Зона №5 (а если зоны уже заняты врагом??)
+                    localScore -= 20; // Зона №5
                 }
 
                 // Рекурсивная оценка ветви ходов
-                int sc = score + numberOfMoves[0]; // Оценка текущего шага с последующей её передачей по ветви ходов
-                int currentScore = runMinMax(depth + 1, 'X', sc);
-                System.out.print("\n  О: " + currentScore );
+                // Оценка текущего шага с последующей её передачей по ветви ходов
+                int currentScore = runMinMax(depth + 1, 'X', localScore + numberOfMoves[0]);
+                if (depth == 0) System.out.print("  -  " + currentScore);
 
                 // Вычисление беты
                 if (currentScore > alpha) alpha = currentScore;
 
+                if (beta <= alpha) {
+                    break;
+                }
+
                 // Обработка результатов оценки
                 // Запись удовлетворяющих результатов
-                if (currentScore >= 0 && depth == 0 && currentScore > bestMove) {
+                if (depth == 0 && currentScore > bestMove) {
                     bestMove = currentScore;
                     minMaxX = cellX;
                     minMaxY = cellY;
                 }
                 // Случай победы компьютера
-                if (currentScore >= 1000) {
-                    x = field[cellX][cellY].getX();
-                    y = field[cellX][cellY].getY();
+                if (currentScore >= 10000) {
                     field[cellX][cellY].setPosition(x, y, '.');
                     break;
                 }
+
                 // Обработка результатов при альфа-бета отсечения и при конце обработки шагов
                 if (cellX == moves.size() / 2 - 1 && alpha < 0 && depth == 0) {
                     minMaxX = cellX;
                     minMaxY = cellY;
-                }
-                if (beta <= alpha) {
-                    break;
                 }
 
             // На шаге 'X' происходит минимизация оценки возможного шага
             } else if (turn == 'X') {
                 // Моделируется шаг игрока
                 move(cellX, cellY, false, 'X', 'O', numberOfMoves);
-                x = field[cellX][cellY].getX();
-                y = field[cellX][cellY].getY();
                 field[cellX][cellY].setPosition(x, y, 'X');
 
                 // Оценка шага весами разных зон игрового поля относительно хода игрока
                 // Зоны обозначены в файле "images/fieldValues.png"
                 if ((cellX == 0  || cellX == 7) && (cellY == 0  || cellY == 7)) {
-                    score /= 5; // Зона №1
+                    localScore -= 20; // Зона №1
                 }
                 if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
-                    score /= 3; // Зона №2
+                    localScore -= 12; // Зона №2
                 }
                 if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
-                    score /= 3; // Зона №2
+                    localScore -= 12; // Зона №2
+                }
+                if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
+                    localScore -= 6; // Зона №3
                 }
                 if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
-                    score *= 3; // Зона №4
+                    localScore += 6; // Зона №4
                 }
                 if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
-                    score *= 3; // Зона №4
+                    localScore += 6; // Зона №4
                 }
                 if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
-                    score *= 5; // Зона №5
+                    localScore += 10; // Зона №5
                 }
                 if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
-                    score *= 5; // Зона №5
+                    localScore += 10; // Зона №5
                 }
 
                 // Рекурсивная оценка ветви ходов
-                int sc = score - numberOfMoves[0];
+                int sc = localScore - numberOfMoves[0];
                 int currentScore = runMinMax(depth + 1, 'O', sc);
-                System.out.print("\n  Х: " + currentScore);
+                if (depth == 0) System.out.print("\n  Х: " + currentScore);
 
                 // Вычисление альфы
                 if (currentScore < beta) { beta = currentScore; }
 
-                // Случай поражения компьютера
-                if (beta <= -1000) {
-                    x = field[cellX][cellY].getX();
-                    y = field[cellX][cellY].getY();
+                if (currentScore <= -10000) {
                     field[cellX][cellY].setPosition(x, y, '.');
                     break;
                 }
             }
 
             // Восстановление игрового поля после моделирования
-            x = field[cellX][cellY].getX();
-            y = field[cellX][cellY].getY();
             field[cellX][cellY].setPosition(x, y, '.');
         }
 
@@ -294,7 +296,7 @@ public class ReversiLogic {
     }
 
     // Ход игрока
-    public int play(int xCor,int yCor) {
+    public int play(int xCor, int yCor) {
         int status; // Статус хода
         int max = 0; // Максимальное количество возможных перекрытий бочонков
         int[] numberOfMoves = new int[1];
@@ -343,6 +345,7 @@ public class ReversiLogic {
         return 1;
     }
 
+    // Обработка конца игры
     public int endOfGame() {
         int[] arr = new int[3];
         controlElements(arr);
@@ -355,12 +358,11 @@ public class ReversiLogic {
             if (userStep == -1 && computerStep == -1) { // Нет возможных ходов
                 return 0;
             } else {
-                if (white > black || black == 0) {
+                if (white > black) {
                     return 1; // Победа белых
-                } else if (black > white || white == 0) {
+                } else if (black > white) {
                     return 2; // Победа черных
-                }
-                else return 3; // Счета нет
+                } else return 3; // Ничья
             }
         }
 
@@ -403,7 +405,7 @@ public class ReversiLogic {
     }
 
     // Обработка хода (поиск перекрытых бочонков)
-    int move(int xStep, int yStep, boolean change, char player, char enemy, int[] numberOfMoves) {
+    public int move(int xStep, int yStep, boolean change, char player, char enemy, int[] numberOfMoves) {
         int processingCoordinate; // Координата обрабатываемой клетки
         int empty = 0; // Флаг, при котором достигнута пустая клетка
         int tunnel = 0; // Флаг, при котором обрабатывается туннель (1 - туннель не образовался, 2 - туннель образовался)

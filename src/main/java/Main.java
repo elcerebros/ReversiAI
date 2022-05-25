@@ -8,8 +8,6 @@ public class Main extends JFrame{
         int height = screenSize.height;
         int width = screenSize.width;
         setSize(width / 2, height / 2);
-
-        // center the jframe on screen
         setLocationRelativeTo(null);
 
         JPanel pnlLeft = new Graphics();

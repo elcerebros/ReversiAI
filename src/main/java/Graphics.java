@@ -18,27 +18,22 @@ import javax.swing.ImageIcon;
  */
 public class Graphics extends JPanel{
     // Инициализация элементов GUI
-    JPanel panel; // Панель с кнопками "Новая игра" и "Шаг назад"
-    JPanel boardPanel; //
-    static JLabel scorePlayer; // Лэйбл счёта игрока
-    static JLabel scoreComputer; // Лэйбл счёта компьютера
-    static JButton newGame; // Кнопка "Новая игра"
-    static JButton undo; // Кнопка "Шаг назад"
-    static JButton[] cell; // Кнопки-клетки игрового поля
+    private static JLabel scorePlayer; // Лэйбл счёта игрока
+    private static JLabel scoreComputer; // Лэйбл счёта компьютера
+    private static JButton newGame; // Кнопка "Новая игра"
+    private static JButton[] cell; // Кнопки-клетки игрового поля
 
     // Инициализация логики игры
-    static ReversiLogic board; // Логика игрового поля
-    static ArrayList<ReversiLogic> arrReversi= new ArrayList<>();
-    static int countUndo = 0;
-    static public int playerScore = 2;
-    static public int pcScore = 2;
+    public static int playerScore = 2;
+    public static int pcScore = 2;
+    public static ReversiLogic board; // Логика игрового поля
+    private static final ArrayList<ReversiLogic> arrReversi = new ArrayList<>();
     private static ReversiLogic start;
     private static final int rows = 8;
     private static final int columns = 8;
-    //private static final Color col = Color.green;
 
     public Graphics() {
-        // Инициализация BorderLayout
+        // Инициализация рабочего пространства
         super(new BorderLayout());
         setPreferredSize(new Dimension(800,770));
         setLocation(0, 0);
@@ -48,12 +43,12 @@ public class Graphics extends JPanel{
         start = board;
         arrReversi.add(new ReversiLogic(board));
 
-        // Инициализация панели с кнопками "Новая игра" и "Шаг назад"
-        panel = new JPanel();
+        // Панель с кнопками "Новая игра" и "Шаг назад"
+        JPanel panel = new JPanel(); // Панель с кнопками "Новая игра" и "Шаг назад"
         panel.setPreferredSize(new Dimension(800,60));
         add(panel, BorderLayout.SOUTH);
 
-        // Инициализация кнопки "Новая игра"
+        // Кнопка "Новая игра"
         newGame = new JButton();
         newGame.setPreferredSize(new Dimension(80,50));
         try {
@@ -63,18 +58,8 @@ public class Graphics extends JPanel{
         newGame.addActionListener(new Action());
         panel.add(newGame);
 
-        // Инициализация кнопки "Шаг назад"
-        undo = new JButton();
-        undo.setPreferredSize(new Dimension(80,50));
-        try {
-            BufferedImage img = ImageIO.read(new File("files/undo.png"));
-            undo.setIcon(new ImageIcon(img));
-        } catch (IOException ignored) { }
-        undo.addActionListener(new Action());
-        panel.add(undo);
-
         // Инициализация игрового поля и клеток-кнопок
-        boardPanel = new JPanel(new GridLayout(8, 8));
+        JPanel boardPanel = new JPanel(new GridLayout(8, 8)); // Панель с игровой доской
         cell = new JButton[64];
         int k = 0;
         for (int i = 0; i < rows; i++) {
@@ -108,7 +93,7 @@ public class Graphics extends JPanel{
         }
         add(boardPanel, BorderLayout.CENTER);
 
-        // Инициализация панели счёта
+        // Панель счёта
         JPanel scorePanel = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         scorePanel.setPreferredSize(new Dimension(800,70));
@@ -144,12 +129,12 @@ public class Graphics extends JPanel{
         add(scorePanel, BorderLayout.NORTH);
     }
 
-    static class Action implements ActionListener {
+    private static class Action implements ActionListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
             // Нажата кнопка "Новая игра"
-            if(e.getSource() == newGame) {
+            if (e.getSource() == newGame) {
                 board.reset();
                 arrReversi.clear();
                 arrReversi.add(new ReversiLogic(start));
@@ -185,60 +170,6 @@ public class Graphics extends JPanel{
                 scorePlayer.setText(" Player : " + playerScore + "  ");
                 scoreComputer.setText(" Computer : " + pcScore + "  ");
 
-                // Нажата кнопка "Шаг назад"
-            } else if(e.getSource() == undo) {
-                countUndo++;
-                int y;
-                char c, x;
-                int[] scores = new int[3];
-                ArrayList <Integer> legalMoves = new ArrayList <>();
-
-                if (arrReversi.size() - countUndo - 1 >= 0) {
-                    // Восстановление игрового поля
-                    for (int i = 0; i < rows; i++) {
-                        for (int j = 0; j < columns; j++) {
-                            x = arrReversi.get(arrReversi.size() - countUndo - 1).field[i][j].getX();
-                            y = arrReversi.get(arrReversi.size() - countUndo - 1).field[i][j].getY();
-                            c = arrReversi.get(arrReversi.size() - countUndo - 1).field[i][j].getStatus();
-                            board.field[i][j].setPosition(x, y, c);
-                        }
-                    }
-
-                    // Простановка иконок
-                    int k = 0;
-                    for (int i = 0; i < rows; i++) {
-                        for (int j = 0; j < columns; j++) {
-                            cell[k].setIcon(null);
-                            if (board.field[i][j].getStatus() == 'X') {
-                                try {
-                                    BufferedImage img = ImageIO.read(new File("files/dark.png"));
-                                    cell[k].setIcon(new ImageIcon(img));
-                                } catch (IOException ignored) { }
-                            } else if(board.field[i][j].getStatus() == 'O') {
-                                try {
-                                    BufferedImage img = ImageIO.read(new File("files/light.png"));
-                                    cell[k].setIcon(new ImageIcon(img));
-                                } catch (IOException ignored) { }
-                            }
-                            ++k;
-                        }
-                    }
-                    // Простановка возможных ходов
-                    board.findLegalMove('X', legalMoves);
-                    for (int j = 0; j < legalMoves.size(); j += 2) {
-                        try {
-                            BufferedImage img = ImageIO.read(new File("files/legalMoveIcon.png"));
-                            cell[legalMoves.get(j) * rows + legalMoves.get(j + 1)].setIcon(new ImageIcon(img));
-                        } catch (IOException ignored) { }
-                    }
-
-                    // Простановка счёта
-                    board.controlElements(scores);
-                    playerScore = scores[0]; pcScore = scores[1];
-                    scorePlayer.setText("Player : " + playerScore + "  ");
-                    scoreComputer.setText("Computer : " + pcScore + "  ");
-                }
-
             // Сделан ход -> обновление игрового поля
             } else {
                 for (int i = 0; i < 64; i++) {
@@ -247,13 +178,8 @@ public class Graphics extends JPanel{
                         int status; // 0 - все ок; 1 - выбрана занятая клетка доски; -1 - боченки не были перекрыты
                         int[] scores = new int[3];
 
-                        if (i == 0) {
-                            x = 0;
-                            y = 0;
-                        } else {
-                            y = i % 8;
-                            x = i / 8;
-                        }
+                        y = i % 8;
+                        x = i / 8;
                         status = board.play(x, y);
 
                         // Обновление поля после хода игрока
@@ -333,7 +259,7 @@ public class Graphics extends JPanel{
                 // 0 - нет возможных ходов
                 // 1 - победа белых
                 // 2 - победа черных
-                // 3 - счёта нет
+                // 3 - ничья
                 if (statusOfGame == 0) {
                     if (playerScore > pcScore) {
                         JOptionPane.showMessageDialog(null, "No legal move!\nPlayer Win!",
@@ -347,7 +273,7 @@ public class Graphics extends JPanel{
                 } else if (statusOfGame == 2) {
                     JOptionPane.showMessageDialog(null,"Player Win!","Game Over",JOptionPane.PLAIN_MESSAGE);
                 } else if (statusOfGame == 3) {
-                    JOptionPane.showMessageDialog(null,"Scoreless!","Game Over",JOptionPane.PLAIN_MESSAGE);
+                    JOptionPane.showMessageDialog(null,"Draw!!","Game Over",JOptionPane.PLAIN_MESSAGE);
                 }
             }
         }
