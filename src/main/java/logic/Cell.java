@@ -20,8 +20,6 @@ public class Cell {
         this.status = status;
     }
 
-    Cell() {}
-
     public char getX() { return x; }
 
     public int getY() { return y; }

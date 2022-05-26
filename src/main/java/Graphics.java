@@ -24,13 +24,11 @@ public class Graphics extends JPanel{
     private static JButton[] cell; // Кнопки-клетки игрового поля
 
     // Инициализация логики игры
-    public static int playerScore = 2;
-    public static int pcScore = 2;
+    public static int playerScore = 2; // Скор игрока
+    public static int pcScore = 2; // СКор компьютера
     public static ReversiLogic board; // Логика игрового поля
-    private static final ArrayList<ReversiLogic> arrReversi = new ArrayList<>();
-    private static ReversiLogic start;
-    private static final int rows = 8;
-    private static final int columns = 8;
+    private static final int rows = 8; // Количество строк поля
+    private static final int columns = 8; // Количество колонок поля
 
     public Graphics() {
         // Инициализация рабочего пространства
@@ -38,12 +36,10 @@ public class Graphics extends JPanel{
         setPreferredSize(new Dimension(800,770));
         setLocation(0, 0);
 
-        // Инициализация панели
+        // Инициализация игровой доски
         board = new ReversiLogic();
-        start = board;
-        arrReversi.add(new ReversiLogic(board));
 
-        // Панель с кнопками "Новая игра" и "Шаг назад"
+        // Панель с кнопкой "Новая игра"
         JPanel panel = new JPanel(); // Панель с кнопками "Новая игра" и "Шаг назад"
         panel.setPreferredSize(new Dimension(800,60));
         add(panel, BorderLayout.SOUTH);
@@ -93,7 +89,7 @@ public class Graphics extends JPanel{
         }
         add(boardPanel, BorderLayout.CENTER);
 
-        // Панель счёта
+        // Панель скоров
         JPanel scorePanel = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
         scorePanel.setPreferredSize(new Dimension(800,70));
@@ -136,8 +132,6 @@ public class Graphics extends JPanel{
             // Нажата кнопка "Новая игра"
             if (e.getSource() == newGame) {
                 board.reset();
-                arrReversi.clear();
-                arrReversi.add(new ReversiLogic(start));
                 int k = 0;
 
                 // Простановка иконок на поле при перезагрузке игры
@@ -174,17 +168,12 @@ public class Graphics extends JPanel{
             } else {
                 for (int i = 0; i < 64; i++) {
                     if (e.getSource() == cell[i]) {
-                        int x, y; // Координаты нажатой клетки
-                        int status; // 0 - все ок; 1 - выбрана занятая клетка доски; -1 - боченки не были перекрыты
+                        int x = i / 8, y =i % 8; // Координаты нажатой клетки
+                        int status = board.play(x, y); // 0 - все ок; 1 - выбрана занятая клетка доски; -1 - боченки не были перекрыты
                         int[] scores = new int[3];
-
-                        y = i % 8;
-                        x = i / 8;
-                        status = board.play(x, y);
 
                         // Обновление поля после хода игрока
                         if (status == 0) {
-                            arrReversi.add(new ReversiLogic(board));
                             int k = 0;
 
                             for (int row = 0; row < rows; row++) {
@@ -213,8 +202,7 @@ public class Graphics extends JPanel{
                         // Последующий ход компьютера
                         if (status == 0 || status == -1) {
                             board.play();
-                            arrReversi.add(new ReversiLogic(board));
-                            ArrayList <Integer> legalMoves = new ArrayList <>();
+                            ArrayList<Integer> legalMoves = new ArrayList<>();
                             int k = 0;
 
                             // Обновление игрового поля после хода компьютера
@@ -236,6 +224,7 @@ public class Graphics extends JPanel{
                                     k++;
                                 }
                             }
+
                             // Простановка возможных ходов
                             board.findLegalMove('X', legalMoves);
                             for (int j = 0; j < legalMoves.size(); j += 2) {
@@ -252,22 +241,19 @@ public class Graphics extends JPanel{
                             scoreComputer.setText("Computer : " + pcScore + "  ");
                         }
                     }
-
                 }
 
                 int statusOfGame = board.endOfGame();
+                // -1 - игра не закончилась
                 // 0 - нет возможных ходов
                 // 1 - победа белых
                 // 2 - победа черных
                 // 3 - ничья
                 if (statusOfGame == 0) {
-                    if (playerScore > pcScore) {
-                        JOptionPane.showMessageDialog(null, "No legal move!\nPlayer Win!",
+                    if (playerScore > pcScore) JOptionPane.showMessageDialog(null, "No legal move!\nPlayer Win!",
                                 "Game Over", JOptionPane.PLAIN_MESSAGE);
-                    } else {
-                        JOptionPane.showMessageDialog(null, "No legal move!\nComputer Win!",
+                    else JOptionPane.showMessageDialog(null, "No legal move!\nComputer Win!",
                                 "Game Over", JOptionPane.PLAIN_MESSAGE);
-                    }
                 } else if (statusOfGame == 1) {
                     JOptionPane.showMessageDialog(null,"Computer Win!","Game Over",JOptionPane.PLAIN_MESSAGE);
                 } else if (statusOfGame == 2) {

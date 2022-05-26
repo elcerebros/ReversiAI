@@ -30,12 +30,6 @@ import java.util.ArrayList;
  * 8) Если все ходы перекрыты, то участник пропускает ход;
  * 9) Бой продолжается до того, когда все бочонки противника будут закрыты.
  *
- * Стратегические маневры:
- * 1) Захват угловых клеток – эта стратегия подразумевает начало занятия поля своими бочонками с угловых клеток;
- * 2) Блокировка возможных ходов противника – означает выставление бочонков таким образом, чтобы противник делал
- *    выгодные ходы не в свою пользу, а в пользу своего соперника;
- * 3) Темп - защита игроком позиций выгодных для себя, недопущение противника сделать в определенном сегменте поля ход.
- *
  * Окончание игры знаменуется невозможностью противников сделать ход. При этом высчитывается количество фигур
  * участников, которые занимают определенные позиции на поле боя. Чьих фишек больше, тот и является выигравшим.
  * В ситуации, когда количество позиционированных фигур на поле боя одинаково, объявляется ничья.
@@ -48,7 +42,7 @@ public class ReversiLogic {
     public Cell[][] field; // Реализация игрового поля
 
     // Переменные требуемые, для реализации искусственного интеллекта
-    private static final int AILevel = 5; // Глубина работы искусственного интеллекта
+    private static final int AILevel = 4; // Глубина работы искусственного интеллекта
     private static int minMaxX, minMaxY; // Координаты наиболее оптимального шага компьютера, полученные при минимаксе
 
     public ReversiLogic() {
@@ -77,27 +71,6 @@ public class ReversiLogic {
         }
     }
 
-    public ReversiLogic(ReversiLogic obj) {
-        char x; // Координаты ячейки игрового поля
-        int y;
-        char status; // Состояние ячейки игрового поля
-
-        // Обновление игрового поля
-        field = new Cell[8][8];
-        for (int i = 0; i < rows; i++) {
-            field[i] = new Cell[8];
-        }
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < columns; j++) {
-                field[i][j] = new Cell();
-                status = obj.field[i][j].getStatus();
-                y = obj.field[i][j].getY();
-                x = obj.field[i][j].getX();
-                field[i][j].setPosition(x, y, status);
-            }
-        }
-    }
-
     // Поиск возможных вариантов хода
     public void findLegalMove(char turn, ArrayList <Integer> arr) {
         int[] numberOfMoves = new int[1]; // Число перевернутых бочонков при определенном шаге
@@ -121,7 +94,7 @@ public class ReversiLogic {
 
     // Ход компьютера
     public void play() {
-        int max = 0; // Максимальное число перекрытых бочонков
+        int maxProfit = 0; // Максимальное число перекрытых бочонков
         int[] numberOfMoves = new int[1]; // Число перевернутых бочонков при определенном шаге
 
         // Поиск хода с максимально возможным количеством перекрытий бочонков
@@ -129,176 +102,196 @@ public class ReversiLogic {
             for (int j = 0; j < columns; j++) {
                 if (field[i][j].getStatus() == '.') {
                     move(i, j, false, 'O', 'X', numberOfMoves);
-                    if (max < numberOfMoves[0]) max = numberOfMoves[0];
+                    if (numberOfMoves[0] > maxProfit) maxProfit = numberOfMoves[0];
                 }
             }
         }
 
         // Если хода нет, он переходит к игроку
-        computerStep = max;
+        computerStep = maxProfit;
         if (computerStep == 0) computerStep = -1;
         else {
             runMinMax(0, 'O', 0);
-            System.out.print("\n                FINAL    " + minMaxX + " " + minMaxY + "\n");
             move(minMaxX, minMaxY, true, 'O', 'X', numberOfMoves);
         }
     }
 
     // Минимакс с альфа-бета отсечением (находит наиболее оптимальный шаг для компьютера)
     private int runMinMax(int depth, char turn, int score) {
-        ArrayList<Integer> moves = new ArrayList<>(); // Массив с координатами доступных шагов для игрока turn
-        findLegalMove(turn, moves); // Получение координат
-
         // Возвращает оценку текущей ветви ходов, если глубина алгоритма достигает уровня искусственного интеллекта
         if (depth == AILevel) return score;
+
         // Возвращает оценку текущей ветви ходов в случае выигрыша (поле заполнено бочонками)
         if (checkOccupancy() == 1) {
-            if (turn == 'O') {
-                return -100000;
-            } else if (turn == 'X') {
-                return 100000;
-            }
+            if (endOfGame() == 1) return 10000000;
+            else return -10000000;
         }
 
-        int beta = Integer.MAX_VALUE; // Более благоприятная оценка для минимизирующего игрока
-        int alpha = Integer.MIN_VALUE; // Более благоприятная оценка для максимизирующего игрока
+        // Инициализация кучи переменных
+        ArrayList<Integer> moves = new ArrayList<>(); // Массив с координатами доступных шагов для игрока turn
+        findLegalMove(turn, moves); // Получение координат
         int[] numberOfMoves = new int[1]; // Число перевернутых бочонков при определенном шаге
         int bestMove = Integer.MIN_VALUE; // Оценка лучшего шага
-        char x; // Координаты шага
-        int y;
+        int beta = Integer.MAX_VALUE; // Более благоприятная оценка для минимизирующего игрока
+        int alpha = Integer.MIN_VALUE; // Более благоприятная оценка для максимизирующего игрока
 
-        // Обработка всех возможных щагов
-        for (int i = 0; i < moves.size() / 2; i += 2) {
-            int localScore = score;
-            // Получение координат из массива
-            int cellX = moves.get(i);
-            int cellY = moves.get(i + 1);
-            x = field[cellX][cellY].getX();
-            y = field[cellX][cellY].getY();
-            if (depth == 0) System.out.print("\nCoordinate: " + cellX + "  " + cellY + "     ");
-
-            // На шаге 'O' происходит максимизация оценки возможного шага
-            if (turn == 'O') {
-                // Моделируется шаг компьютера
-                move(cellX, cellY, false, 'O', 'X', numberOfMoves);
-                field[cellX][cellY].setPosition(x, y, 'O');
-
-                // Оценка шага весами разных зон игрового поля относительно хода компьютера
-                // Зоны обозначены в файле "images/fieldValues.png"
-                if ((cellX == 0  || cellX == 7) && (cellY == 0  || cellY == 7)) {
-                    localScore += 10; // Зона №1
-                }
-                if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
-                    localScore += 6; // Зона №2
-                }
-                if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
-                    localScore += 6; // Зона №2
-                }
-                if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
-                    localScore += 6; // Зона №3
-                }
-                if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
-                    localScore -= 12; // Зона №4
-                }
-                if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
-                    localScore -= 12; // Зона №4
-                }
-                if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
-                    localScore -= 20; // Зона №5
-                }
-                if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
-                    localScore -= 20; // Зона №5
-                }
-
-                // Рекурсивная оценка ветви ходов
-                // Оценка текущего шага с последующей её передачей по ветви ходов
-                int currentScore = runMinMax(depth + 1, 'X', localScore + numberOfMoves[0]);
-                if (depth == 0) System.out.print("  -  " + currentScore);
-
-                // Вычисление беты
-                if (currentScore > alpha) alpha = currentScore;
-
-                if (beta <= alpha) {
-                    break;
-                }
-
-                // Обработка результатов оценки
-                // Запись удовлетворяющих результатов
-                if (depth == 0 && currentScore > bestMove) {
-                    bestMove = currentScore;
-                    minMaxX = cellX;
-                    minMaxY = cellY;
-                }
-                // Случай победы компьютера
-                if (currentScore >= 10000) {
-                    field[cellX][cellY].setPosition(x, y, '.');
-                    break;
-                }
-
-                // Обработка результатов при альфа-бета отсечения и при конце обработки шагов
-                if (cellX == moves.size() / 2 - 1 && alpha < 0 && depth == 0) {
-                    minMaxX = cellX;
-                    minMaxY = cellY;
-                }
-
-            // На шаге 'X' происходит минимизация оценки возможного шага
-            } else if (turn == 'X') {
-                // Моделируется шаг игрока
-                move(cellX, cellY, false, 'X', 'O', numberOfMoves);
-                field[cellX][cellY].setPosition(x, y, 'X');
-
-                // Оценка шага весами разных зон игрового поля относительно хода игрока
-                // Зоны обозначены в файле "images/fieldValues.png"
-                if ((cellX == 0  || cellX == 7) && (cellY == 0  || cellY == 7)) {
-                    localScore -= 20; // Зона №1
-                }
-                if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
-                    localScore -= 12; // Зона №2
-                }
-                if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
-                    localScore -= 12; // Зона №2
-                }
-                if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
-                    localScore -= 6; // Зона №3
-                }
-                if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
-                    localScore += 6; // Зона №4
-                }
-                if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
-                    localScore += 6; // Зона №4
-                }
-                if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
-                    localScore += 10; // Зона №5
-                }
-                if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
-                    localScore += 10; // Зона №5
-                }
-
-                // Рекурсивная оценка ветви ходов
-                int sc = localScore - numberOfMoves[0];
-                int currentScore = runMinMax(depth + 1, 'O', sc);
-                if (depth == 0) System.out.print("\n  Х: " + currentScore);
-
-                // Вычисление альфы
-                if (currentScore < beta) { beta = currentScore; }
-
-                if (currentScore <= -10000) {
-                    field[cellX][cellY].setPosition(x, y, '.');
-                    break;
-                }
+        // Дополнительное поле, которе используется для моделирования отдельной ветки
+        Cell[][] fieldLocal = new Cell[8][8];
+        for (int i = 0; i < rows; i++) {
+            fieldLocal[i] = new Cell[8];
+            for (int j = 0; j < columns; j++) {
+                char c = (char) (97 + j);
+                fieldLocal[i][j] = new Cell(c, i + 1, field[i][j].getStatus());
             }
-
-            // Восстановление игрового поля после моделирования
-            field[cellX][cellY].setPosition(x, y, '.');
         }
 
-        return turn == 'O' ? alpha : beta;
+        if (moves.isEmpty()) {
+            return 0;
+        } else {
+            // Обработка всех возможных щагов
+            for (int i = 0; i < moves.size() / 2; i += 2) {
+                int scoreLocal = score;
+                int cellX = moves.get(i);
+                int cellY = moves.get(i + 1);
+
+                // На шаге 'O' происходит максимизация оценки возможного шага
+                if (turn == 'O') {
+                    // Моделируется шаг компьютера
+                    move(cellX, cellY, true, 'O', 'X', numberOfMoves);
+
+                    // Оценка шага весами разных зон игрового поля относительно хода компьютера (зоны обозначены в файле "images/fieldValues.png")
+                    if ((cellX == 0 || cellX == 7) && (cellY == 0 || cellY == 7)) {
+                        scoreLocal += 40; // Зона №1
+                    }
+                    if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
+                        scoreLocal += 20; // Зона №2
+                    }
+                    if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
+                        scoreLocal += 20; // Зона №2
+                    }
+                    if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
+                        scoreLocal += 5; // Зона №3
+                    }
+                    if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
+                        scoreLocal -= 20; // Зона №4
+                    }
+                    if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
+                        scoreLocal -= 20; // Зона №4
+                    }
+                    if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
+                        scoreLocal -= 40; // Зона №5
+                    }
+                    if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
+                        scoreLocal -= 40; // Зона №5
+                    }
+
+                    // Оценка текущего шага с последующей её передачей по ветви ходов
+                    int currentScore = runMinMax(depth + 1, 'X', scoreLocal + numberOfMoves[0]);
+
+                    // Вычисление альфы
+                    if (currentScore > alpha) alpha = currentScore;
+
+                    // Запись удовлетворяющих результатов
+                    if (depth == 0 && currentScore > bestMove) {
+                        bestMove = currentScore;
+                        minMaxX = cellX;
+                        minMaxY = cellY;
+                    }
+
+                    // Случай победы компьютера
+                    if (currentScore >= 10000) {
+                        for (int k = 0; k < 8; k++) {
+                            for (int z = 0; z < 8; z++) {
+                                field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
+                            }
+                        }
+                        return 1000000;
+                    }
+
+                    // Отсечения ветвей, которые заведомо нам не нравятся
+                    if (beta <= alpha) {
+                        for (int k = 0; k < 8; k++) {
+                            for (int z = 0; z < 8; z++) {
+                                field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
+                            }
+                        }
+                        break;
+                    }
+
+                // На шаге 'X' происходит минимизация оценки возможного шага
+                } else if (turn == 'X') {
+                    // Моделируется шаг игрока
+                    move(cellX, cellY, true, 'X', 'O', numberOfMoves);
+
+                    // Оценка шага весами разных зон игрового поля относительно хода игрока (зоны обозначены в файле "images/fieldValues.png")
+                    if ((cellX == 0 || cellX == 7) && (cellY == 0 || cellY == 7)) {
+                        scoreLocal -= 40; // Зона №1
+                    }
+                    if ((cellX > 1 && cellX < 6) && (cellY == 0 || cellY == 7)) {
+                        scoreLocal -= 20; // Зона №2
+                    }
+                    if ((cellY > 1 && cellY < 6) && (cellX == 0 || cellX == 7)) {
+                        scoreLocal -= 20; // Зона №2
+                    }
+                    if (cellX > 1 && cellX < 6 && cellY > 1 && cellY < 6) {
+                        scoreLocal -= 5; // Зона №3
+                    }
+                    if ((cellX > 1 && cellX < 6) && (cellY == 1 || cellY == 6)) {
+                        scoreLocal += 20; // Зона №4
+                    }
+                    if ((cellY > 1 && cellY < 6) && (cellX == 1 || cellX == 6)) {
+                        scoreLocal += 20; // Зона №4
+                    }
+                    if ((cellX == 1 || cellX == 6) && (cellY < 2 || cellY > 5)) {
+                        scoreLocal += 40; // Зона №5
+                    }
+                    if ((cellY == 1 || cellY == 6) && (cellX < 2 || cellX > 5)) {
+                        scoreLocal += 40; // Зона №5
+                    }
+
+                    // Рекурсивная оценка ветви ходов
+                    int currentScore = runMinMax(depth + 1, 'O', scoreLocal - numberOfMoves[0]);
+
+                    // Вычисление альфы
+                    if (currentScore < beta) beta = currentScore;
+
+                    // Случай выигрыша игрока
+                    if (currentScore <= -10000) {
+                        for (int k = 0; k < 8; k++) {
+                            for (int z = 0; z < 8; z++) {
+                                field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
+                            }
+                        }
+
+                        return -1000000;
+                    }
+
+                    // Отсечения ветвей, которые заведомо нам не нравятся
+                    if (beta <= alpha) {
+                        for (int k = 0; k < 8; k++) {
+                            for (int z = 0; z < 8; z++) {
+                                field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                // Восстановление игрового поля после моделирования ходов
+                for (int k = 0; k < 8; k++) {
+                    for (int z = 0; z < 8; z++) {
+                        field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
+                    }
+                }
+            }
+        }
+
+        return 0;
     }
 
     // Ход игрока
     public int play(int xCor, int yCor) {
-        int status; // Статус хода
-        int max = 0; // Максимальное количество возможных перекрытий бочонков
+        int maxProfit = 0; // Максимальное количество возможных перекрытий бочонков
         int[] numberOfMoves = new int[1];
 
         // Поиск хода с максимально возможным количеством перекрытий бочонков
@@ -306,26 +299,19 @@ public class ReversiLogic {
             for (int j = 0; j < columns; j++) {
                 if (field[i][j].getStatus() == '.') {
                     move(i, j, false, 'X', 'O', numberOfMoves);
-                    if (max < numberOfMoves[0]) {
-                        max = numberOfMoves[0];
-                    }
+                    if (maxProfit < numberOfMoves[0]) maxProfit = numberOfMoves[0];
                 }
             }
         }
 
         // Если хода нет, он переходит к компьютеру
-        userStep = max;
+        userStep = maxProfit;
         if (userStep == 0) {
             userStep = -1;
-            return userStep;
+            return -1;
         } else {
-            if (field[xCor][yCor].getStatus() != '.') {
-                return 1; // Неверный ход (выбрана занятая клетка доски)
-            }
-            status = move(xCor, yCor, true, 'X', 'O', numberOfMoves);
-            if (status == -1) {
-                return 1; // Неверный ход (бочонки не были перекрыты)
-            }
+            if (field[xCor][yCor].getStatus() != '.') return 1; // Неверный ход (выбрана занятая клетка доски)
+            if (move(xCor, yCor, true, 'X', 'O', numberOfMoves) == -1) return 1; // Неверный ход (бочонки не были перекрыты)
         }
 
         return 0;
@@ -355,18 +341,15 @@ public class ReversiLogic {
         int empty = arr[2];
 
         if ((userStep == -1 && computerStep == -1) || empty == 0) {
-            if (userStep == -1 && computerStep == -1) { // Нет возможных ходов
-                return 0;
-            } else {
-                if (white > black) {
-                    return 1; // Победа белых
-                } else if (black > white) {
-                    return 2; // Победа черных
-                } else return 3; // Ничья
+            if (userStep == -1 && computerStep == -1) return 0; // Нет возможных ходов
+            else {
+                if (white > black) return 1; // Победа белых
+                else if (black > white) return 2; // Победа черных
+                else return 3; // Ничья
             }
         }
 
-        return -1;
+        return -1; // Игра не закончена
     }
 
     // Подсчет текущего состояния игровой доски
@@ -407,8 +390,8 @@ public class ReversiLogic {
     // Обработка хода (поиск перекрытых бочонков)
     public int move(int xStep, int yStep, boolean change, char player, char enemy, int[] numberOfMoves) {
         int processingCoordinate; // Координата обрабатываемой клетки
-        int empty = 0; // Флаг, при котором достигнута пустая клетка
-        int tunnel = 0; // Флаг, при котором обрабатывается туннель (1 - туннель не образовался, 2 - туннель образовался)
+        int emptyFlag = 0; // Флаг, при котором достигнута пустая клетка
+        int tunnelFlag = 0; // Флаг, при котором обрабатывается туннель (1 - туннель не образовался, 2 - туннель образовался)
         int status = -1; // Статус хода
         int xDiagonal, yDiagonal; // Координаты диагональных обрабатываемых клеток
         int tempAmount; // Количество перекрытых бочонков
@@ -420,25 +403,25 @@ public class ReversiLogic {
         if ((xStep + 1 < rows) && (field[xStep + 1][yStep].getStatus() == enemy)) {
             processingCoordinate = xStep;
 
-            while ((processingCoordinate < rows) && (empty != -1) && (tunnel != 2)) {
+            while ((processingCoordinate < rows) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 processingCoordinate++;
                 if (processingCoordinate < rows) {
                     if (field[processingCoordinate][yStep].getStatus() == enemy) {
-                        tunnel = 1; // // Туннель, заполненный бочонками противника, не образовался
+                        tunnelFlag = 1; // // Туннель, заполненный бочонками противника, не образовался
                     } else if (field[processingCoordinate][yStep].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = processingCoordinate - xStep - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if (tunnel == 2 && change) {
+            if (tunnelFlag == 2 && change) {
                 for (int i = xStep; i < processingCoordinate; ++i) {
                     x = field[i][yStep].getX();
                     y = field[i][yStep].getY();
@@ -448,33 +431,33 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные сверху
         if ((xStep - 1 >= 0) && (field[xStep - 1][yStep].getStatus() == enemy)) {
             processingCoordinate = xStep;
 
-            while ((processingCoordinate >= 0) && (empty != -1) && (tunnel != 2)) {
+            while ((processingCoordinate >= 0) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 processingCoordinate--;
                 if (processingCoordinate >= 0) {
                     if (field[processingCoordinate][yStep].getStatus() == enemy) {
-                        tunnel = 1; // // Туннель, заполненный бочонками противника, не образовался
+                        tunnelFlag = 1; // // Туннель, заполненный бочонками противника, не образовался
                     } else if (field[processingCoordinate][yStep].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = xStep - processingCoordinate - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if (tunnel == 2 && change) {
+            if (tunnelFlag == 2 && change) {
                 for (int i = processingCoordinate; i <= xStep; ++i) {
                     x = field[i][yStep].getX();
                     y = field[i][yStep].getY();
@@ -484,33 +467,33 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные справа
         if ((yStep + 1 < columns) && (field[xStep][yStep + 1].getStatus() == enemy)) {
             processingCoordinate = yStep;
 
-            while ((processingCoordinate < columns) && (empty != -1) && (tunnel != 2)) {
+            while ((processingCoordinate < columns) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 processingCoordinate++;
                 if (processingCoordinate < columns) {
                     if (field[xStep][processingCoordinate].getStatus() == enemy) {
-                        tunnel = 1; // // Туннель, заполненный бочонками противника, не образовался
+                        tunnelFlag = 1; // // Туннель, заполненный бочонками противника, не образовался
                     } else if (field[xStep][processingCoordinate].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = processingCoordinate - yStep - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 for (int i = yStep; i < processingCoordinate; ++i) {
                     x = field[xStep][i].getX();
                     y = field[xStep][i].getY();
@@ -520,33 +503,33 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные слева
         if ((yStep - 1 >= 0) && (field[xStep][yStep - 1].getStatus() == enemy)) {
             processingCoordinate = yStep;
 
-            while ((processingCoordinate >= 0) && (empty != -1) && (tunnel != 2)) {
+            while ((processingCoordinate >= 0) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 processingCoordinate--;
                 if (processingCoordinate >= 0){
                     if (field[xStep][processingCoordinate].getStatus() == enemy) {
-                        tunnel = 1; // // Туннель, заполненный бочонками противника, не образовался
+                        tunnelFlag = 1; // // Туннель, заполненный бочонками противника, не образовался
                     } else if (field[xStep][processingCoordinate].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1;
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1;
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = yStep - processingCoordinate - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 for (int i = processingCoordinate; i <= yStep; ++i) {
                     x = field[xStep][i].getX();
                     y = field[xStep][i].getY();
@@ -556,8 +539,8 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные по диагонали справа-сверху
@@ -565,26 +548,26 @@ public class ReversiLogic {
             yDiagonal = yStep;
             xDiagonal = xStep;
 
-            while ((xDiagonal >= 0) && (yDiagonal < columns) && (empty != -1) && (tunnel != 2)) {
+            while ((xDiagonal >= 0) && (yDiagonal < columns) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 xDiagonal--;
                 yDiagonal++;
                 if ((xDiagonal >= 0) && (yDiagonal < columns)) {
                     if (field[xDiagonal][yDiagonal].getStatus() == enemy) {
-                        tunnel = 1;
+                        tunnelFlag = 1;
                     } else if (field[xDiagonal][yDiagonal].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = xStep - xDiagonal - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 while((xDiagonal <= xStep) && (yStep < yDiagonal)) {
                     xDiagonal++;
                     yDiagonal--;
@@ -598,8 +581,8 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные по диагонали слева-сверху
@@ -607,26 +590,26 @@ public class ReversiLogic {
             yDiagonal = yStep;
             xDiagonal = xStep;
 
-            while ((xDiagonal >= 0) && (yDiagonal >= 0) && (empty != -1) && (tunnel != 2)) {
+            while ((xDiagonal >= 0) && (yDiagonal >= 0) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 xDiagonal--;
                 yDiagonal--;
                 if ((xDiagonal >= 0) && (yDiagonal >= 0)){
                     if (field[xDiagonal][yDiagonal].getStatus() == enemy) {
-                        tunnel = 1;
+                        tunnelFlag = 1;
                     } else if(field[xDiagonal][yDiagonal].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = xStep - xDiagonal - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 while((xDiagonal <= xStep) && (yDiagonal <= yStep)) {
                     xDiagonal++;
                     yDiagonal++;
@@ -640,8 +623,8 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные по диагонали справа-снизу
@@ -649,26 +632,26 @@ public class ReversiLogic {
             yDiagonal = yStep;
             xDiagonal = xStep;
 
-            while ((xDiagonal < rows) && (yDiagonal < columns) && (empty != -1) && (tunnel != 2)) {
+            while ((xDiagonal < rows) && (yDiagonal < columns) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 xDiagonal++;
                 yDiagonal++;
                 if ((xDiagonal < rows) && (yDiagonal < columns)) {
                     if (field[xDiagonal][yDiagonal].getStatus() == enemy) {
-                        tunnel = 1;
+                        tunnelFlag = 1;
                     } else if (field[xDiagonal][yDiagonal].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = xDiagonal - xStep - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 while((xDiagonal >= xStep) && (yDiagonal >= yStep)) {
                     xDiagonal--;
                     yDiagonal--;
@@ -682,8 +665,8 @@ public class ReversiLogic {
             }
 
             // Обнуление флагов
-            tunnel = 0;
-            empty = 0;
+            tunnelFlag = 0;
+            emptyFlag = 0;
         }
 
         // Рассматриваются ячейки, расположенные по диагонали слева-снизу
@@ -691,26 +674,26 @@ public class ReversiLogic {
             yDiagonal = yStep;
             xDiagonal = xStep;
 
-            while ((xDiagonal < rows) && (yDiagonal >= 0) && (empty != -1) && (tunnel != 2)) {
+            while ((xDiagonal < rows) && (yDiagonal >= 0) && (emptyFlag != -1) && (tunnelFlag != 2)) {
                 xDiagonal++;
                 yDiagonal--;
                 if ((xDiagonal < rows) && (yDiagonal >= 0)) {
                     if (field[xDiagonal][yDiagonal].getStatus() == enemy) {
-                        tunnel = 1;
+                        tunnelFlag = 1;
                     } else if (field[xDiagonal][yDiagonal].getStatus() == player) {
-                        tunnel = 2; // Образовался туннель, заполненный бочонками противника
-                    } else empty = -1; // Достигнута свободная клетка
+                        tunnelFlag = 2; // Образовался туннель, заполненный бочонками противника
+                    } else emptyFlag = -1; // Достигнута свободная клетка
                 }
             }
 
             // Вычисление количества перекрытых бочонков
-            if (tunnel == 2) {
+            if (tunnelFlag == 2) {
                 tempAmount = xDiagonal - xStep - 1;
                 numberOfMoves[0] += tempAmount;
             }
 
             // Изменение статуса бочонков
-            if(tunnel == 2 && change) {
+            if(tunnelFlag == 2 && change) {
                 while((xDiagonal >= xStep) && (yDiagonal <= yStep)) {
                     xDiagonal--;
                     yDiagonal++;
@@ -724,7 +707,6 @@ public class ReversiLogic {
             }
         }
 
-        if (status == 0) return 0;
-        else return -1;
+        return status;
     }
 }

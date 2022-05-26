@@ -3,6 +3,7 @@ import java.awt.*;
 
 public class Main extends JFrame{
     public Main() {
+        // Настройка окна графического интерфейса
         setLayout(new BorderLayout());
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         int height = screenSize.height;
@@ -10,9 +11,11 @@ public class Main extends JFrame{
         setSize(width / 2, height / 2);
         setLocationRelativeTo(null);
 
+        // Подключение графики
         JPanel pnlLeft = new Graphics();
         add(pnlLeft, BorderLayout.CENTER);
 
+        // Донастройка окна графического интерфейса
         setSize(550, 690);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
