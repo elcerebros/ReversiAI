@@ -123,8 +123,8 @@ public class ReversiLogic {
 
         // Возвращает оценку текущей ветви ходов в случае выигрыша (поле заполнено бочонками)
         if (checkOccupancy() == 1) {
-            if (endOfGame() == 1) return 10000000;
-            else return -10000000;
+            if (endOfGame() == 1 || endOfGame() == 3) return 10000000;
+            else if (endOfGame() == 2) return -10000000;
         }
 
         // Инициализация кучи переменных
@@ -262,7 +262,6 @@ public class ReversiLogic {
                                 field[k][z].setPosition(fieldLocal[k][z].getX(), fieldLocal[k][z].getY(), fieldLocal[k][z].getStatus());
                             }
                         }
-
                         return -1000000;
                     }
 
@@ -286,7 +285,7 @@ public class ReversiLogic {
             }
         }
 
-        return 0;
+        return turn == 'O' ? alpha : beta;
     }
 
     // Ход игрока

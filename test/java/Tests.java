@@ -127,7 +127,7 @@ public class Tests {
         for (int i = 0; i < 50; i++) {
             new Main();
 
-            while (Graphics.board.checkOccupancy() != 1) {
+            while (Graphics.board.endOfGame() == -1) {
                 Graphics.board.findLegalMove('X', movesX);
                 Graphics.board.findLegalMove('O', movesO);
 
@@ -140,12 +140,12 @@ public class Tests {
                     Graphics.board.play(cellX, cellY);
                 }
 
-                if (!movesO.isEmpty()) Graphics.board.play();
+                Graphics.board.play();
             }
 
             if (Graphics.board.endOfGame() == 2) countOfFails++;
         }
 
-        assertTrue(countOfFails <= 7, "Player won or draw in more than 7 games (" + countOfFails + ")");
+        assertTrue(countOfFails <= 5, "Player won or draw in more than 5 games (" + countOfFails + ")");
     }
 }
